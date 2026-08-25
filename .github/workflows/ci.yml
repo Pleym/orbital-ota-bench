@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies and tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y qemu-system-arm
+        # Install CUE
+        curl -L https://github.com/cue-lang/cue/releases/download/v0.17.1/cue_v0.17.1_linux_amd64.tar.gz | tar -xz -C /usr/local/bin cue
+        # Install uv
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Setup project
+      run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
+        uv venv .venv --python 3.11
+        .venv/bin/pip install -r requirements.txt
+        .venv/bin/playwright install chromium
+
+    - name: Run tests
+      run: |
+        .venv/bin/pytest -v tests/
